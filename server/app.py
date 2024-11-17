@@ -12,7 +12,7 @@ app = Flask(__name__)
 # TODO: set CORS to only allow client address access
 CORS(app)
 
-chat_history = []
+chat_history = [{"role": "system", "content": Config.GPT_INIT_PROMPT}]
 GPT = OpenAI(api_key=Config.OPENAI_API_KEY)
 
 
