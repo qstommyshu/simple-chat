@@ -26,7 +26,7 @@ def hello_world():  # put application's code here
 
 @app.route('/url', methods=['POST'])
 def initialize_chat() -> Response:
-    # TODO: valid url format in server
+    # TODO: validate url format in server
     url = request.get_json()['url']
 
     conn = get_db_connection()
@@ -36,12 +36,12 @@ def initialize_chat() -> Response:
     chat_id = cur.lastrowid
     conn.close()
 
-    return jsonify({'chat_id': chat_id})
+    return jsonify({'id': chat_id})
 
 @app.route('/chat', methods=['POST'])
 def chat() -> str:
     user_input = request.get_json()['body']
-    chat_id = request.get_json()['chat_id']
+    chat_id = request.get_json()['id']
     response = send_to_ai(user_input)
 
     json_messages = json.dumps(chat_history)
@@ -86,6 +86,33 @@ def send_to_ai(data: str) -> str:
     print(response)
     return response
 
+@app.route('/load_chat', methods=['GET'])
+def load_chat():
+    chat_id = request.args.get('id')
+
+    if chat_id is None:
+        return jsonify({"error": "Missing parameter 'id'"}), 400
+
+    try:
+        chat_id = int(chat_id)
+    except ValueError:
+        return jsonify({"error": "Invalid parameter 'id'. It must be an integer."}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM chats WHERE id = ?', (chat_id,))
+    chat = cur.fetchone()
+    conn.close()
+
+    if chat is None:
+        return jsonify({"error": "Chat not found"}), 404
+
+    chat_dict = {
+        "id": chat['id'],
+        "url": chat['url'],
+        "history": chat['history']
+    }
+    return jsonify(chat_dict)
 
 
 if __name__ == '__main__':
