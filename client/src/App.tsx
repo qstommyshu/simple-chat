@@ -1,16 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import {Button, TextField} from '@mui/material';
+import {Button, TextField, Input} from '@mui/material';
+import {useSelector, useDispatch} from "react-redux";
+import { selectChatId, selectChatUrl, selectChatHistory, updateChatId, loadChat, updateUrl, updateHistory} from "./state/chatSlice.ts";
 
 interface Message {
-  sender: 'user' | 'bot';
-  text: string;
+  role: 'user' | 'system';
+  content: string;
 }
 
 const App: React.FC = () => {
-  const [hasURL, setHasURL] = useState<boolean>(false);
+  const dispatch = useDispatch();
+  const chatId = useSelector(selectChatId);
+  const url = useSelector(selectChatUrl);
+  const history = useSelector(selectChatHistory);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState<string>('');
+  const [prevChatId, setPrevChatId] = useState<string>('');
   const chatBoxRef = useRef<HTMLDivElement>(null);
 
   // Effect to scroll to the latest message when messages are updated
@@ -20,48 +26,55 @@ const App: React.FC = () => {
     }
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!hasURL) {
-      const userMessage: Message = { sender: 'user', text: inputValue };
-      setMessages((prevMessages) => [...prevMessages, userMessage]);
-      setInputValue('');
+  useEffect(() => {
+    console.log("history updated!")
+      console.log(history)
+  }, [history]);
 
-      try {
-        const response = await axios.post('http://127.0.0.1:8000/url', {
-          url: inputValue,
-        });
-
-        const botMessage: Message = {
-          sender: 'bot',
-          text: response.data.body,
-        };
-        setHasURL(true);
-
-        setMessages((prevMessages) => [...prevMessages, botMessage]);
+  const rewind_chat = async (id: string) => {
+    try {
+        const response = await axios.get(`http://127.0.0.1:8000/load_chat?id=${id}`)
+        dispatch(loadChat(response.data))
+        console.log("response data is ")
+      console.log(response.data)
+        setPrevChatId('')
       } catch (error) {
         console.error('Error communicating with the backend:', error);
       }
       return;
-    }
+  }
+
+  const setURL = async () => {
+      try {
+        const response = await axios.post('http://127.0.0.1:8000/url', {
+          url: url,
+        });
+        dispatch(updateChatId(response.data.id))
+      } catch (error) {
+        console.error('Error communicating with the backend:', error);
+      }
+      return;
+  }
+
+  const handleSend = async () => {
 
     if (inputValue.trim() === '') return;
 
-    const userMessage: Message = { sender: 'user', text: inputValue };
+    const userMessage: Message = { role: 'user', content: inputValue };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInputValue('');
 
     try {
       const response = await axios.post('http://127.0.0.1:8000/chat', {
         body: inputValue,
+        id: chatId,
       });
 
-      const parsed_response = JSON.parse(response.data);
-      console.log(parsed_response)
-
+      console.log(response.data)
 
       const botMessage: Message = {
-        sender: 'bot',
-        text: response.data.body,
+        role: 'system',
+        content: response.data.answer,
       };
       setMessages((prevMessages) => [...prevMessages, botMessage]);
     } catch (error) {
@@ -79,21 +92,40 @@ const App: React.FC = () => {
   return (
       <div style={styles.container}>
         <h1>Simple Chat</h1>
-        <div>Current chat reference ID: </div>
-        <div>Rewind from chat reference ID: <TextField variant="outlined"/></div>
-        <div>I would like to chat about <TextField label="website" variant="outlined"/></div>
+        <div>Current chat reference ID: {chatId}</div>
+        <div>
+          Rewind from previous chat ID:
+          <Input
+              value={prevChatId}
+              type={"number"}
+              onChange={e => setPrevChatId(e.target.value)}
+          />
+          <Button
+              variant="contained"
+              onClick={()=>rewind_chat(prevChatId)}>
+            Confirm
+          </Button>
+        </div>
+        <div>
+          I would like to chat about
+          <TextField label="website" variant="outlined"
+                     value={url}
+                     onChange={e => dispatch(updateUrl(e.target.value))}
+          />
+          <Button variant="contained" onClick={setURL}>set url</Button>
+        </div>
         <div style={styles.chatBox} ref={chatBoxRef}>
-          {messages.map((message, index) => (
+          {history.map((message, index) => (
               <div
                   key={index}
                   style={{
                     ...styles.message,
-                    alignSelf: message.sender === 'user' ? 'flex-end' : 'flex-start',
-                    backgroundColor: message.sender === 'user' ? '#000' : '#ccc',
+                    alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
+                    backgroundColor: message.role === 'user' ? '#000' : '#ccc',
                     color: '#fff',
                   }}
               >
-                {message.text}
+                {message.content}
               </div>
           ))}
         </div>
