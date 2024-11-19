@@ -1,20 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-
-interface Content {
-    text: string,
-    options: string[],
-}
-
-interface Message {
-    role: 'user' | 'system';
-    content: Content;
-}
-
-interface Chat {
-    id: string;
-    url: string;
-    history: Message[];
-}
+import { Chat } from "../types";
 
 const initialState: Chat = {
     id: '',
@@ -41,28 +26,22 @@ export const chatSlice = createSlice({
         loadChat: (state, action) => {
             state.id = action.payload.id;
             state.url = action.payload.url;
-            state.history = deepParse(action.payload.conversation);
+            state.history = deepParse(action.payload.convo);
         },
         addLastMessage: (state, action) => {
             state.history.push(action.payload);
         },
-        updateChatId: (state, action) => {
-            state.id = action.payload;
-        },
         updateUrl: (state, action) => {
             state.url = action.payload;
         },
-        updateHistory: (state, action) => {
-            state.history = action.payload;
-        }
     },
 });
 
-export const { loadChat, addLastMessage, updateChatId, updateUrl, updateHistory} = chatSlice.actions;
+export const { loadChat, addLastMessage, updateUrl, } = chatSlice.actions;
 
-const selectChatId = (state) => state.chat.id;
-const selectChatUrl = (state) => state.chat.url;
-const selectChatHistory = (state) => state.chat.history;
+const selectChatId = (state: {chat: Chat}) => state.chat.id;
+const selectChatUrl = (state: {chat: Chat}) => state.chat.url;
+const selectChatHistory = (state: {chat: Chat}) => state.chat.history;
 
 export { selectChatId, selectChatUrl, selectChatHistory};
 

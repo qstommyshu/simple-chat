@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
 import {Button, TextField, Input} from '@mui/material';
 import {useSelector, useDispatch} from "react-redux";
 import {
@@ -10,19 +9,16 @@ import {
   updateUrl,
   addLastMessage
 } from "./state/chatSlice.ts";
-
-interface Message {
-    role: 'user' | 'system';
-    content: string;
-}
+import { Message } from "./types";
+import {loadChatFromId, sendChatMessage, sendURL} from "./routes";
 
 const App: React.FC = () => {
   const dispatch = useDispatch();
   const chatId = useSelector(selectChatId);
   const url = useSelector(selectChatUrl);
-  const history: Message[] = useSelector(selectChatHistory);
+  const chat = useSelector(selectChatHistory);
   const [options, setOptions] = useState<string[]>([]);
-  const [inputValue, setInputValue] = useState<string>('');
+  const [userInput, setUserInput] = useState<string>('');
   const [prevChatId, setPrevChatId] = useState<string>('');
   const chatBoxRef = useRef<HTMLDivElement>(null);
 
@@ -31,65 +27,37 @@ const App: React.FC = () => {
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
     }
-  }, [history]);
+  }, [chat]);
 
-  const rewind_chat = async (id: string) => {
-    try {
-        const response = await axios.get(`http://127.0.0.1:8000/load_chat?id=${id}`)
-        dispatch(loadChat(response.data))
-        setPrevChatId('')
-      } catch (error) {
-        console.error('Error communicating with the backend:', error);
-      }
-      return;
+  const rewind_chat = async (prevChatId: string) => {
+
+    const prevChat = await loadChatFromId(prevChatId);
+    setPrevChatId('')
+    dispatch(loadChat(prevChat))
   }
 
   const setURL = async () => {
-      try {
-        const response = await axios.post('http://127.0.0.1:8000/url', {
-          url: url,
-        });
-        // dispatch(updateChatId(response.data.id))
-        dispatch(loadChat(response.data))
-        // dispatch(addLastMessage(response.data.body))
-
-      } catch (error) {
-        console.error('Error communicating with the backend:', error);
-      }
-      return;
+    const chat = await sendURL(url);
+    dispatch(loadChat(chat));
   }
 
-  const handleSend = async (inputValue) => {
+  const handleSend = async (userInput: string) => {
 
-    if (inputValue.trim() === '') return;
+    if (userInput.trim() === '') return;
 
-    const userMessage: Message = { role: 'user', content: inputValue };
-    dispatch(addLastMessage(userMessage))
-    setInputValue('');
+    const userMessage: Message = { role: 'user', content: userInput };
+    dispatch(addLastMessage(userMessage));
+    setUserInput('');
     setOptions([]);
 
-    try {
-      const response = await axios.post('http://127.0.0.1:8000/chat', {
-        body: userMessage,
-        id: chatId,
-      });
-
-      console.log(response.data)
-
-      const botMessage: Message = {
-        role: 'system',
-        content: response.data.body,
-      };
-      dispatch(addLastMessage(botMessage))
-      setOptions(response.data.options)
-    } catch (error) {
-      console.error('Error communicating with the backend:', error);
-    }
+    const [botMessage, options] = await sendChatMessage(chatId, userMessage);
+    dispatch(addLastMessage(botMessage));
+    setOptions(options);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      handleSend(inputValue);
+      handleSend(userInput);
     }
   };
 
@@ -119,7 +87,7 @@ const App: React.FC = () => {
           <Button variant="contained" onClick={setURL}>set url</Button>
         </div>
         <div style={styles.chatBox} ref={chatBoxRef}>
-          {history.map((message, index) => (
+          {chat.map((message, index) => (
               <div
                   key={index}
                   style={{
@@ -133,9 +101,9 @@ const App: React.FC = () => {
               </div>
           ))}
           {options.map((option, index) => (
-              <div>
+              <div key={index}>
                 <Button
-                    variant="contained"
+                    variant="outlined"
                     onClick={()=>{
                       handleSend(option);
                     }}
@@ -147,12 +115,12 @@ const App: React.FC = () => {
           <input
               type="text"
               placeholder="Enter a URL..."
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={handleKeyDown}
               style={styles.input}
           />
-          <Button variant="contained" onClick={handleSend}>Send</Button>
+          <Button variant="contained" onClick={() => handleSend(userInput)}>Send</Button>
         </div>
       </div>
   );
