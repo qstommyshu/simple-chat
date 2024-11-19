@@ -2,19 +2,26 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import {Button, TextField, Input} from '@mui/material';
 import {useSelector, useDispatch} from "react-redux";
-import { selectChatId, selectChatUrl, selectChatHistory, updateChatId, loadChat, updateUrl, updateHistory} from "./state/chatSlice.ts";
+import {
+  selectChatId,
+  selectChatUrl,
+  selectChatHistory,
+  loadChat,
+  updateUrl,
+  addLastMessage
+} from "./state/chatSlice.ts";
 
 interface Message {
-  role: 'user' | 'system';
-  content: string;
+    role: 'user' | 'system';
+    content: string;
 }
 
 const App: React.FC = () => {
   const dispatch = useDispatch();
   const chatId = useSelector(selectChatId);
   const url = useSelector(selectChatUrl);
-  const history = useSelector(selectChatHistory);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const history: Message[] = useSelector(selectChatHistory);
+  const [options, setOptions] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState<string>('');
   const [prevChatId, setPrevChatId] = useState<string>('');
   const chatBoxRef = useRef<HTMLDivElement>(null);
@@ -24,19 +31,12 @@ const App: React.FC = () => {
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
     }
-  }, [messages]);
-
-  useEffect(() => {
-    console.log("history updated!")
-      console.log(history)
   }, [history]);
 
   const rewind_chat = async (id: string) => {
     try {
         const response = await axios.get(`http://127.0.0.1:8000/load_chat?id=${id}`)
         dispatch(loadChat(response.data))
-        console.log("response data is ")
-      console.log(response.data)
         setPrevChatId('')
       } catch (error) {
         console.error('Error communicating with the backend:', error);
@@ -49,24 +49,28 @@ const App: React.FC = () => {
         const response = await axios.post('http://127.0.0.1:8000/url', {
           url: url,
         });
-        dispatch(updateChatId(response.data.id))
+        // dispatch(updateChatId(response.data.id))
+        dispatch(loadChat(response.data))
+        // dispatch(addLastMessage(response.data.body))
+
       } catch (error) {
         console.error('Error communicating with the backend:', error);
       }
       return;
   }
 
-  const handleSend = async () => {
+  const handleSend = async (inputValue) => {
 
     if (inputValue.trim() === '') return;
 
     const userMessage: Message = { role: 'user', content: inputValue };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
+    dispatch(addLastMessage(userMessage))
     setInputValue('');
+    setOptions([]);
 
     try {
       const response = await axios.post('http://127.0.0.1:8000/chat', {
-        body: inputValue,
+        body: userMessage,
         id: chatId,
       });
 
@@ -74,9 +78,10 @@ const App: React.FC = () => {
 
       const botMessage: Message = {
         role: 'system',
-        content: response.data.answer,
+        content: response.data.body,
       };
-      setMessages((prevMessages) => [...prevMessages, botMessage]);
+      dispatch(addLastMessage(botMessage))
+      setOptions(response.data.options)
     } catch (error) {
       console.error('Error communicating with the backend:', error);
     }
@@ -84,10 +89,9 @@ const App: React.FC = () => {
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      handleSend();
+      handleSend(inputValue);
     }
   };
-
 
   return (
       <div style={styles.container}>
@@ -126,6 +130,16 @@ const App: React.FC = () => {
                   }}
               >
                 {message.content}
+              </div>
+          ))}
+          {options.map((option, index) => (
+              <div>
+                <Button
+                    variant="contained"
+                    onClick={()=>{
+                      handleSend(option);
+                    }}
+                >{option}</Button>
               </div>
           ))}
         </div>

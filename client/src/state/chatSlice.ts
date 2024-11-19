@@ -1,8 +1,13 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+interface Content {
+    text: string,
+    options: string[],
+}
+
 interface Message {
-    sender: 'user' | 'bot';
-    text: string;
+    role: 'user' | 'system';
+    content: Content;
 }
 
 interface Chat {
@@ -17,6 +22,18 @@ const initialState: Chat = {
     history: [],
 };
 
+const deepParse = (jsonString: string)=> {
+    const result = JSON.parse(jsonString)
+    if (typeof result === 'object' && result !== null) {
+        for (const key in result) {
+            if (typeof result[key] === 'string') {
+                result[key] = deepParse(result[key]);
+            }
+        }
+    }
+    return result
+}
+
 export const chatSlice = createSlice({
     name: 'chat',
     initialState,
@@ -24,10 +41,10 @@ export const chatSlice = createSlice({
         loadChat: (state, action) => {
             state.id = action.payload.id;
             state.url = action.payload.url;
-            state.history = JSON.parse(action.payload.history);
+            state.history = deepParse(action.payload.conversation);
         },
         addLastMessage: (state, action) => {
-            state.history.push(action.payload.message);
+            state.history.push(action.payload);
         },
         updateChatId: (state, action) => {
             state.id = action.payload;
