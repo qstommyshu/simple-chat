@@ -67,6 +67,7 @@ def initialize_chat() -> Response:
     # TODO: make it a schema
     return jsonify({
         'id': chat_id,
+        'url': url,
         'convo': str_convo
     })
 
@@ -159,7 +160,7 @@ def load_chat() -> Response:
     chat_dict = {
         "id": chat['id'],
         "url": chat['url'],
-        "conversation": chat['conversation']
+        "convo": chat['conversation']
     }
     return jsonify(chat_dict)
 
