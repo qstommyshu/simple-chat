@@ -4,7 +4,7 @@ import { Chat } from "../types";
 const initialState: Chat = {
     id: '',
     url: '',
-    history: [],
+    convo: [],
 };
 
 const deepParse = (jsonString: string)=> {
@@ -26,10 +26,10 @@ export const chatSlice = createSlice({
         loadChat: (state, action) => {
             state.id = action.payload.id;
             state.url = action.payload.url;
-            state.history = deepParse(action.payload.convo);
+            state.convo = deepParse(action.payload.convo);
         },
         addLastMessage: (state, action) => {
-            state.history.push(action.payload);
+            state.convo.push(action.payload);
         },
         updateUrl: (state, action) => {
             state.url = action.payload;
@@ -41,7 +41,7 @@ export const { loadChat, addLastMessage, updateUrl, } = chatSlice.actions;
 
 const selectChatId = (state: {chat: Chat}) => state.chat.id;
 const selectChatUrl = (state: {chat: Chat}) => state.chat.url;
-const selectChatHistory = (state: {chat: Chat}) => state.chat.history;
+const selectChatHistory = (state: {chat: Chat}) => state.chat.convo;
 
 export { selectChatId, selectChatUrl, selectChatHistory};
 

@@ -6,5 +6,5 @@ export interface Message {
 export interface Chat {
     id: string;
     url: string;
-    history: Message[];
+    convo: Message[];
 }

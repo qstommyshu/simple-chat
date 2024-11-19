@@ -29,8 +29,7 @@ const App: React.FC = () => {
     }
   }, [chat]);
 
-  const rewind_chat = async (prevChatId: string) => {
-
+  const rewindChat = async (prevChatId: string) => {
     const prevChat = await loadChatFromId(prevChatId);
     setPrevChatId('')
     dispatch(loadChat(prevChat))
@@ -41,8 +40,7 @@ const App: React.FC = () => {
     dispatch(loadChat(chat));
   }
 
-  const handleSend = async (userInput: string) => {
-
+  const sendMessage = async (userInput: string) => {
     if (userInput.trim() === '') return;
 
     const userMessage: Message = { role: 'user', content: userInput };
@@ -53,11 +51,12 @@ const App: React.FC = () => {
     const [botMessage, options] = await sendChatMessage(chatId, userMessage);
     dispatch(addLastMessage(botMessage));
     setOptions(options);
+    return;
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      handleSend(userInput);
+      sendMessage(userInput);
     }
   };
 
@@ -74,7 +73,7 @@ const App: React.FC = () => {
           />
           <Button
               variant="contained"
-              onClick={()=>rewind_chat(prevChatId)}>
+              onClick={()=>rewindChat(prevChatId)}>
             Confirm
           </Button>
         </div>
@@ -105,7 +104,7 @@ const App: React.FC = () => {
                 <Button
                     variant="outlined"
                     onClick={()=>{
-                      handleSend(option);
+                      sendMessage(option);
                     }}
                 >{option}</Button>
               </div>
@@ -120,7 +119,7 @@ const App: React.FC = () => {
               onKeyDown={handleKeyDown}
               style={styles.input}
           />
-          <Button variant="contained" onClick={() => handleSend(userInput)}>Send</Button>
+          <Button variant="contained" onClick={() => sendMessage(userInput)}>Send</Button>
         </div>
       </div>
   );
