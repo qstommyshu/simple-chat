@@ -1,20 +1,18 @@
-import urlParse from 'url-parse';
+export const autoCompleteUrl = (url: string): string => {
+  const urlRegex = /^((http|https):\/\/)?(www\.)?([^/]+)(\/.*)?$/;
+  const match = url.match(urlRegex);
 
-const DEFAULT_PROTOCOL = 'https:';
-const DEFAULT_HOST = 'www.';
+  if (!match) {
+    return '';
+  }
 
-export const completeURL = (inputURL: string): string => {
-    const parsedURL = urlParse(inputURL, {}, true);
+  const [, , protocol, subdomain, domain, pathname] = match;
 
-    if (!parsedURL.protocol) {
-        parsedURL.set('protocol', DEFAULT_PROTOCOL);
-    }
+  const newProtocol = protocol || 'https:';
 
-    if (!parsedURL.hostname.startsWith(DEFAULT_HOST)) {
-        parsedURL.set('hostname', DEFAULT_HOST + parsedURL.hostname);
-    } else {
-        parsedURL.set('hostname', parsedURL.hostname);
-    }
+  const newSubdomain = subdomain || 'www.';
 
-    return parsedURL.href;
-};
+  const newPathname = pathname ? pathname.replace(/^\//, '/') : '';
+
+  return `${newProtocol}//${newSubdomain}${domain}${newPathname}`;
+}

@@ -1,6 +1,6 @@
 import axios from "axios";
 import {Chat, Message} from "../types";
-import {completeURL} from "../utils";
+import {autoCompleteUrl} from "../utils";
 
 export const loadChatFromId = async (id: string): Promise<Chat> => {
     try {
@@ -31,8 +31,7 @@ export const sendChatMessage = async (id: string, userMessage: Message): Promise
 }
 
 export const sendURL = async (url: string): Promise<Chat> => {
-    // TODO: what if given url is invalid?
-    const completeUrl = completeURL(url);
+    const completeUrl = autoCompleteUrl(url);
     console.log(`complete url is ${completeUrl}`)
     try {
         const response = await axios.post('http://127.0.0.1:8000/url', {
