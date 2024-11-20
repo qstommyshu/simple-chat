@@ -40,23 +40,27 @@ const App: React.FC = () => {
     dispatch(loadChat(chat));
   }
 
-  const sendMessage = async (userInput: string) => {
+  const sendMessage = async () => {
     if (userInput.trim() === '') return;
-
-    const userMessage: Message = { role: 'user', content: userInput };
-    dispatch(addLastMessage(userMessage));
     setUserInput('');
+    sendToServer(userInput)
+  };
+
+  const sendToServer = async (message: string) => {
+    const userMessage: Message = { role: 'user', content: message };
+    dispatch(addLastMessage(userMessage));
     setOptions([]);
 
     const [botMessage, options] = await sendChatMessage(chatId, userMessage);
     dispatch(addLastMessage(botMessage));
     setOptions(options);
     return;
-  };
+  }
+
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      sendMessage(userInput);
+      sendMessage();
     }
   };
 
@@ -104,7 +108,7 @@ const App: React.FC = () => {
                 <Button
                     variant="outlined"
                     onClick={()=>{
-                      sendMessage(option);
+                      sendToServer(option)
                     }}
                 >{option}</Button>
               </div>
@@ -119,7 +123,7 @@ const App: React.FC = () => {
               onKeyDown={handleKeyDown}
               style={styles.input}
           />
-          <Button variant="contained" onClick={() => sendMessage(userInput)}>Send</Button>
+          <Button variant="contained" onClick={() => sendMessage()}>Send</Button>
         </div>
       </div>
   );
