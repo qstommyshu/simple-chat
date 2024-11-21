@@ -2,7 +2,10 @@ import sqlite3
 from config import Config
 from urllib.parse import urlparse
 import queries
+import requests
+from bs4 import BeautifulSoup
 
+# DB
 def db_init():
     conn = sqlite3.connect(Config.DATABASE_URI)
     cur = conn.cursor()
@@ -30,6 +33,20 @@ def db_conn_execute_query(conn, query: str, parameters) -> int:
 
     return row_id
 
+# Web scraper
+def scrape_page_content(url: str) -> str:
+    try:
+        response = requests.get(url)
+
+        if response.status_code != 200:
+            raise Exception(f'Failed to fetch URL. Status code: {response.status_code}')
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+        text_content = soup.get_text(separator='\n', strip=True)
+        return text_content
+
+    except Exception as e:
+        raise e
 
 def is_url_valid(url: str) -> bool:
     try:
