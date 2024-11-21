@@ -1,4 +1,4 @@
-// test/autoCompleteUrl.test.ts
+// tests/autoCompleteUrl.tests.ts
 import { assertEquals } from "https://deno.land/std/testing/asserts.ts";
 import {autoCompleteUrl} from "../utils/index.ts";
 
