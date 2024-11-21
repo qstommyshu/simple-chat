@@ -6,7 +6,3 @@ export default configureStore({
         chat: chatSliceReducer
     }
 })
-
-export interface RootState {
-    chat: ReturnType<typeof chatSliceReducer>
-}

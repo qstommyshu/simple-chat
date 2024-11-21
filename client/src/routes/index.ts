@@ -2,10 +2,11 @@ import axios from "axios";
 import {Chat, Message} from "../types";
 import {autoCompleteUrl} from "../utils";
 
+const BASE_URL = "http://127.0.0.1:8000"
+
 export const loadChatFromId = async (id: string): Promise<Chat> => {
     try {
-        const response = await axios.get(`http://127.0.0.1:8000/load_chat?id=${id}`);
-        console.log(response.data)
+        const response = await axios.get(`${BASE_URL}/load_chat?id=${id}`);
         return response.data;
     } catch (error) {
         console.error('Error communicating with the backend:', error);
@@ -15,7 +16,7 @@ export const loadChatFromId = async (id: string): Promise<Chat> => {
 
 export const sendChatMessage = async (id: string, userMessage: Message): Promise<[Message, string[]]> => {
     try {
-        const response = await axios.post('http://127.0.0.1:8000/chat', {
+        const response = await axios.post(`${BASE_URL}/chat`, {
             body: userMessage,
             id: id,
         });
@@ -32,12 +33,10 @@ export const sendChatMessage = async (id: string, userMessage: Message): Promise
 
 export const sendURL = async (url: string): Promise<Chat> => {
     const completeUrl = autoCompleteUrl(url);
-    console.log(`complete url is ${completeUrl}`)
     try {
-        const response = await axios.post('http://127.0.0.1:8000/url', {
+        const response = await axios.post(`${BASE_URL}/url`, {
           url: completeUrl,
         });
-        console.log(response.data)
         return response.data;
     } catch (error) {
         console.error('Error communicating with the backend:', error);
