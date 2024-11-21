@@ -1,42 +1,21 @@
-from urllib.parse import urlparse
-
 from flask import Flask, Response, request, jsonify
 from flask_cors import CORS
-import sqlite3
-
 from config import Config
 import requests
 from bs4 import BeautifulSoup
 from openai import OpenAI
 from schema import ChatResponse
 import json
+import constants
+import queries
+from server.utils import db_conn_execute_query
+from utils import db_get_connection, is_url_valid, db_init, db_conn_fetch_one_query
 
 app = Flask(__name__)
 # TODO: set CORS to only allow client address access
 CORS(app)
 
-setting_prompt = {"role": "system", "content": Config.GPT_INIT_PROMPT}
-string_setting_prompt = json.dumps(setting_prompt, ensure_ascii=False)
-
 GPT = OpenAI(api_key=Config.OPENAI_API_KEY)
-
-def get_db_connection():
-    conn = sqlite3.connect(Config.DATABASE_URI)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def is_url_valid(url: str) -> bool:
-    try:
-        result = urlparse(url)
-        return all([result.scheme, result.netloc])
-    except ValueError:
-        return False
-
-# def execute_and_commit(conn, sql: str, parameters):
-#     cur = conn.cursor()
-#     cur.execute(sql, parameters)
-#     conn.commit()
-
 @app.route('/')
 def check_health():  # put application's code here
     return 'server is up!'
@@ -50,18 +29,13 @@ def initialize_chat() -> Response:
     # TODO: catch exception
     page_content = scrape_page_content(url)
 
-    conn = get_db_connection()
-    # TODO: can change to a function
-    cur = conn.cursor()
-    cur.execute('INSERT INTO chats (url, page_content, conversation) VALUES (?, ?, ?)',
-                (url, page_content, json.dumps([])))
-    conn.commit()
-    # TODO: up to here
-    chat_id = cur.lastrowid
+    conn = db_get_connection()
+
+    chat_id = db_conn_execute_query(conn, queries.CREATE_CHAT, (url, page_content, json.dumps([])))
     convo = [{"role": "assistant", "content": f"Trained on {url}, and your chat reference id is {chat_id}"}]
     str_convo = json.dumps(convo, ensure_ascii=False)
-    cur.execute('UPDATE chats set conversation = ? WHERE id = ?', (str_convo, chat_id))
-    conn.commit()
+
+    db_conn_execute_query(conn, queries.UPDATE_CONVERSATION, (str_convo, chat_id))
     conn.close()
 
     # TODO: make it a schema
@@ -87,15 +61,12 @@ def scrape_page_content(url: str) -> str:
 
 '''chat() takes in a { role: 'user', content: inputValue }'''
 @app.route('/chat', methods=['POST'])
-def chat() -> Response:
+def chat() -> tuple[Response, int]:
     user_message = request.get_json()['body']
     chat_id = int(request.get_json()['id'])
 
-    # Get page_content and conversation
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('SELECT page_content, conversation FROM chats WHERE id = ?', (chat_id,))
-    chat_data = cur.fetchone()
+    conn = db_get_connection()
+    chat_data = db_conn_fetch_one_query(conn, queries.SET_PAGE_CONTENT, (chat_id,))
     conn.close()
 
     # Internal error, should not be exposed to client
@@ -105,10 +76,9 @@ def chat() -> Response:
     chat_history = json.loads(chat_data['conversation'])
     chat_history.append(user_message)
 
-    setting = [setting_prompt,
+    setting = [constants.init_setting_prompt,
                {"role": "system","content": chat_data['page_content']}]
     chat_context = setting + chat_history
-
 
 
     response = send_to_ai(chat_context)
@@ -118,12 +88,11 @@ def chat() -> Response:
 
     str_chat_history = json.dumps(chat_history, ensure_ascii=False)
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('UPDATE chats set conversation = ? WHERE id = ?', (str_chat_history, chat_id))
-    conn.commit()
+    conn = db_get_connection()
+    db_conn_execute_query(conn, queries.UPDATE_CONVERSATION, (str_chat_history, chat_id))
+    conn.close()
 
-    return jsonify(json.loads(response))
+    return jsonify(json.loads(response)), 200
 
 
 def send_to_ai(chat_context) -> str:
@@ -137,7 +106,7 @@ def send_to_ai(chat_context) -> str:
     return response
 
 @app.route('/load_chat', methods=['GET'])
-def load_chat() -> Response:
+def load_chat() -> tuple[Response, int]:
     chat_id = request.args.get('id')
 
     if chat_id is None:
@@ -148,10 +117,8 @@ def load_chat() -> Response:
     except ValueError:
         return jsonify({"error": "Invalid parameter 'id'. It must be an integer."}), 400
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('SELECT * FROM chats WHERE id = ?', (chat_id,))
-    chat = cur.fetchone()
+    conn = db_get_connection()
+    chat = db_conn_fetch_one_query(conn, queries.FETCH_CHAT, (chat_id,))
     conn.close()
 
     if chat is None:
@@ -162,22 +129,8 @@ def load_chat() -> Response:
         "url": chat['url'],
         "convo": chat['conversation']
     }
-    return jsonify(chat_dict)
+    return jsonify(chat_dict), 200
 
 if __name__ == '__main__':
-    # initialize db
-    conn = sqlite3.connect(Config.DATABASE_URI)
-    cur = conn.cursor()
-    # TODO: make url field not update able
-    cur.execute('''
-            CREATE TABLE IF NOT EXISTS chats(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                url TEXT NOT NULL,
-                page_content BLOB NOT NULL,
-                conversation TEXT NOT NULL
-            )
-            ''')
-    conn.commit()
-    conn.close()
-
-    app.run(port=8000)
+    db_init()
+    app.run(port=Config.SERVER_PORT)
