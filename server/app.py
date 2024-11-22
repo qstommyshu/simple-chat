@@ -15,6 +15,7 @@ from chatGPT import send_to_ai
 app = Flask(__name__)
 CORS(app)
 
+utils.db_init()
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -26,7 +27,7 @@ def check_health() -> str:
     """Check if the server is running."""
     return 'Server is up and running!'
 
-@app.route('/url', methods=['POST'])
+@app.route('/api/url', methods=['POST'])
 def initialize_chat() -> tuple[Response, int]:
     """Initialize a new chat with a given URL."""
     data = request.get_json()
@@ -50,7 +51,7 @@ def initialize_chat() -> tuple[Response, int]:
     chat_dict = ChatSchema(**new_chat).model_dump()
     return jsonify(chat_dict), 200
 
-@app.route('/chat', methods=['POST'])
+@app.route('/api/chat', methods=['POST'])
 def chat() -> tuple[Response, int]:
     """Handle a user's chat message and get a response from OpenAI."""
     data = request.get_json()
@@ -96,7 +97,7 @@ def chat() -> tuple[Response, int]:
         return jsonify({"error": f"Failed to generate AI response: {str(e)}"}), 500
 
 
-@app.route('/load_chat', methods=['GET'])
+@app.route('/api/load_chat', methods=['GET'])
 def load_chat() -> tuple[Response, int]:
     """Load a chat conversation by its ID."""
     chat_id = request.args.get('id')
