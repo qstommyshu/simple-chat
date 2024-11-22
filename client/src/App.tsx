@@ -80,6 +80,7 @@ const App: React.FC = () => {
       setIsLoading(true);
       const prevChat = await loadChatFromId(prevChatId);
       setPrevChatId('');
+      setOptions([]);
       dispatch(loadChat(prevChat));
       showSnackbar('Chat rewound successfully!', 'success');
     } catch (error) {
@@ -148,7 +149,7 @@ const App: React.FC = () => {
     <Box
       sx={{
         width: '100%',
-        maxWidth: '600px',
+        maxWidth: '800px',
         margin: '0 auto',
         padding: 2,
         fontFamily: 'Roboto, sans-serif',
@@ -163,16 +164,18 @@ const App: React.FC = () => {
 
       <Paper elevation={3} sx={{ padding: 2, marginBottom: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6}>
+          {/* Reference ID */}
+          <Grid item xs={12} md={6}>
             <Typography variant="subtitle1">Current Chat Reference ID:</Typography>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} md={6}>
             <Typography variant="h6" color="primary">
               {chatId || 'Not Set'}
             </Typography>
           </Grid>
 
-          <Grid item xs={12} sm={6}>
+          {/* Rewind Chat ID and Website URL */}
+          <Grid item xs={12} md={6}>
             <TextField
               label="Rewind from Previous Chat ID"
               variant="outlined"
@@ -183,23 +186,7 @@ const App: React.FC = () => {
               disabled={isLoading}
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <Button
-              variant="contained"
-              color="secondary"
-              fullWidth
-              onClick={() => rewindChat(prevChatId)}
-              disabled={!prevChatId.trim() || isLoading}
-            >
-              Confirm
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      <Paper elevation={3} sx={{ padding: 2, marginBottom: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={8}>
+          <Grid item xs={12} md={6}>
             <TextField
               label="Website URL"
               variant="outlined"
@@ -209,7 +196,20 @@ const App: React.FC = () => {
               disabled={isLoading}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+
+          {/* Buttons */}
+          <Grid item xs={12} md={6}>
+            <Button
+              variant="contained"
+              color="secondary"
+              fullWidth
+              onClick={() => rewindChat(prevChatId)}
+              disabled={!prevChatId.trim() || isLoading}
+            >
+              Rewind Chat
+            </Button>
+          </Grid>
+          <Grid item xs={12} md={6}>
             <Button
               variant="contained"
               color="primary"
@@ -314,9 +314,7 @@ const App: React.FC = () => {
             ),
           }}
         />
-        {isLoading && (
-          <CircularProgress size={24} sx={{ marginLeft: 2 }} />
-        )}
+        {isLoading && <CircularProgress size={24} sx={{ marginLeft: 2 }} />}
       </Box>
 
       {/* Snackbar for Notifications */}
