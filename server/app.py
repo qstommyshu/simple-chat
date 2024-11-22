@@ -6,7 +6,6 @@ from flask import Flask, Response, request, jsonify
 from flask_cors import CORS
 
 # Local Application Imports
-from config import Config
 from schema import ChatSchema
 import constants
 import utils
