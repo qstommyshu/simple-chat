@@ -1,8 +1,8 @@
 import axios from "axios";
-import {Chat, Message} from "../types";
-import {autoCompleteUrl} from "../utils";
+import { Chat, Message } from "../types";
+import { autoCompleteUrl } from "../utils";
 
-const BASE_URL = "http://127.0.0.1:8000"
+const BASE_URL = "/api"
 
 export const loadChatFromId = async (id: string): Promise<Chat> => {
     try {
@@ -43,3 +43,4 @@ export const sendURL = async (url: string): Promise<Chat> => {
         throw new Error('Failed to send url');
     }
 }
+
