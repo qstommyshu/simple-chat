@@ -118,6 +118,6 @@ def load_chat() -> tuple[Response, int]:
     chat_dict = ChatSchema(**prev_chat).model_dump()
     return jsonify(chat_dict), 200
 
-if __name__ == '__main__':
-    utils.db_init()
-    app.run(port=Config.SERVER_PORT)
+# if __name__ == '__main__':
+#     utils.db_init()
+#     app.run(port=Config.SERVER_PORT)
