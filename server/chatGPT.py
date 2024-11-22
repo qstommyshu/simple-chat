@@ -3,7 +3,7 @@ from config import Config
 from openai import OpenAI
 from typing import List, Dict, Optional
 
-# Ensure that the DATABASE_URI is provided
+# Ensure that the OPENAI_API_KEY is provided
 if not getattr(Config, 'OPENAI_API_KEY', None):
     raise ValueError("OPENAI_API_KEY must be set in .env file.")
 
