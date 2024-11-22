@@ -1,18 +1,21 @@
+# Standard Library Imports
+import json
+
+# Third-Party Imports
 from flask import Flask, Response, request, jsonify
 from flask_cors import CORS
+
+# Local Application Imports
 from config import Config
-from openai import OpenAI
-from schema import GPTResponseSchema, ChatSchema
-import json
+from schema import ChatSchema
 import constants
-import queries
-from server.utils import db_conn_execute_query
+from server.utils import db_conn_update_convo, db_conn_create_chat, db_conn_fetch_chat
 import utils
+from chatGPT import send_to_ai
 
 app = Flask(__name__)
 CORS(app)
 
-GPT = OpenAI(api_key=Config.OPENAI_API_KEY)
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -38,24 +41,15 @@ def initialize_chat() -> tuple[Response, int]:
     except Exception as e:
         return jsonify({"error": f"Failed to scrape page content: {str(e)}"}), 400
 
-    conn = utils.db_get_connection()
-    try:
-        chat_id = db_conn_execute_query(conn, queries.CREATE_CHAT, (url, page_content, json.dumps([])))
-        convo = [{"role": "assistant", "content": f"Trained on {url}, and your chat reference id is {chat_id}"}]
-        str_convo = json.dumps(convo, ensure_ascii=False)
-        db_conn_execute_query(conn, queries.UPDATE_CONVERSATION, (str_convo, chat_id))
-    finally:
-        conn.close()
+    with utils.db_get_connection() as conn:
+        chat_id = db_conn_create_chat(conn, url, page_content)
+        new_chat = db_conn_fetch_chat(conn, chat_id)
 
-    new_chat = {
-        'id': chat_id,
-        'url': url,
-        'convo': str_convo,
-    }
+    if not new_chat:
+        return jsonify({"error": "An error occurred when creating a new chat, please try again"}), 500
 
     chat_dict = ChatSchema(**new_chat).model_dump()
     return jsonify(chat_dict), 200
-
 
 @app.route('/chat', methods=['POST'])
 def chat() -> tuple[Response, int]:
@@ -72,22 +66,19 @@ def chat() -> tuple[Response, int]:
     except ValueError:
         return jsonify({"error": "Invalid 'id'. It must be an integer."}), 400
 
-    conn = utils.db_get_connection()
-    try:
-        chat_data = utils.db_conn_fetch_one_query(conn, queries.SET_PAGE_CONTENT, (chat_id,))
-    finally:
-        conn.close()
+    with utils.db_get_connection() as conn:
+        prev_chat = db_conn_fetch_chat(conn, chat_id)
 
-    if not chat_data:
+    if not prev_chat:
         return jsonify({"error": "Chat not found"}), 404
 
-    convo = json.loads(chat_data['convo'])
+    convo = json.loads(prev_chat['convo'])
     convo.append(user_message)
 
     # Construct chat context
     setting = [
         constants.init_setting_prompt,
-        {"role": "system", "content": chat_data['page_content']}
+        {"role": "system", "content": prev_chat['page_content']}
     ]
     chat_context = setting + convo
 
@@ -98,27 +89,14 @@ def chat() -> tuple[Response, int]:
         convo.append(last_message)
 
         # Update conversation in the database
-        str_convo = json.dumps(convo, ensure_ascii=False)
-        conn = utils.db_get_connection()
-        try:
-            db_conn_execute_query(conn, queries.UPDATE_CONVERSATION, (str_convo, chat_id))
-        finally:
-            conn.close()
+        with utils.db_get_connection() as conn:
+            db_conn_update_convo(conn, chat_id, convo)
 
         return jsonify(json_response), 200
     except Exception as e:
         return jsonify({"error": f"Failed to generate AI response: {str(e)}"}), 500
 
 
-def send_to_ai(chat_context: list) -> str:
-    """Send the chat context to OpenAI and return the response."""
-    chat_completion = GPT.beta.chat.completions.parse(
-        model=Config.OPENAI_MODEL,
-        response_format=GPTResponseSchema,
-        messages=chat_context
-    )
-
-    return chat_completion.choices[0].message.content
 @app.route('/load_chat', methods=['GET'])
 def load_chat() -> tuple[Response, int]:
     """Load a chat conversation by its ID."""
@@ -132,11 +110,8 @@ def load_chat() -> tuple[Response, int]:
     except ValueError:
         return jsonify({"error": "Invalid parameter 'id'. It must be an integer."}), 400
 
-    conn = utils.db_get_connection()
-    try:
-        prev_chat = utils.db_conn_fetch_one_query(conn, queries.FETCH_CHAT, (chat_id,))
-    finally:
-        conn.close()
+    with utils.db_get_connection() as conn:
+        prev_chat = utils.db_conn_fetch_chat(conn, chat_id)
 
     if not prev_chat:
         return jsonify({"error": "Chat not found"}), 404
