@@ -89,7 +89,7 @@ def db_conn_create_chat(conn: sqlite3.Connection, url: str, page_content: str) -
     Returns:
         int: The last row ID inserted.
     """
-    convo = [{"role": "assistant", "content": f"Trained on {url}, please check above the chat box to see your chat reference id"}]
+    convo = [{"role": "assistant", "content": f"Trained on {url}, please check right of the chat box to see your chat reference id"}]
     str_convo = json.dumps(convo, ensure_ascii=False)
     try:
         cur = conn.cursor()

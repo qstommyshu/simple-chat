@@ -9,7 +9,6 @@ from flask_cors import CORS
 from config import Config
 from schema import ChatSchema
 import constants
-from server.utils import db_conn_update_convo, db_conn_create_chat, db_conn_fetch_chat
 import utils
 from chatGPT import send_to_ai
 
@@ -42,8 +41,8 @@ def initialize_chat() -> tuple[Response, int]:
         return jsonify({"error": f"Failed to scrape page content: {str(e)}"}), 400
 
     with utils.db_get_connection() as conn:
-        chat_id = db_conn_create_chat(conn, url, page_content)
-        new_chat = db_conn_fetch_chat(conn, chat_id)
+        chat_id = utils.db_conn_create_chat(conn, url, page_content)
+        new_chat = utils.db_conn_fetch_chat(conn, chat_id)
 
     if not new_chat:
         return jsonify({"error": "An error occurred when creating a new chat, please try again"}), 500
@@ -67,7 +66,7 @@ def chat() -> tuple[Response, int]:
         return jsonify({"error": "Invalid 'id'. It must be an integer."}), 400
 
     with utils.db_get_connection() as conn:
-        prev_chat = db_conn_fetch_chat(conn, chat_id)
+        prev_chat = utils.db_conn_fetch_chat(conn, chat_id)
 
     if not prev_chat:
         return jsonify({"error": "Chat not found"}), 404
@@ -90,7 +89,7 @@ def chat() -> tuple[Response, int]:
 
         # Update conversation in the database
         with utils.db_get_connection() as conn:
-            db_conn_update_convo(conn, chat_id, convo)
+            utils.db_conn_update_convo(conn, chat_id, convo)
 
         return jsonify(json_response), 200
     except Exception as e:
