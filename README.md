@@ -6,7 +6,7 @@ The project is deployed to: https://qstommyshu.com/
 
 ### Project details
 
-This is a mini-challenge project for hiring purposes. It is a web application that takes in a url and create a knowledge chatbot to answer users questions.
+Simple-chat is a web application that takes in a url and create a knowledge chatbot to answer users questions.
 
 #### Frontend solved challenges:
 1. React state management, State Management with Redux.
